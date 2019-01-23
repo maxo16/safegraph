@@ -1,0 +1,44 @@
+---
+title: "Safegraph"
+author: "Max O'Krepki"
+date: "January 13, 2019"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(readr)
+library(dplyr)
+library(rjson)
+```
+
+```{r}
+# Change this to take in a df instead
+helper_function <- function(df){
+  place <- df[[1]]
+  cbgs  <- df[[2]]
+  temp_vec <- unlist(fromJSON(json_str = cbgs))
+  
+  return(data.frame("place" = rep(place, length(temp_vec)), "home_cbg" = names(temp_vec), "visitor_counts" = temp_vec))
+}
+
+# View(helper_function(test[1,]))
+```
+
+```{r}
+# Import the dataset
+test <- read_csv("C:/Users/Max/Documents/GitHub/safegraph/test.csv")
+# Filter out the rows with no cbgs
+test <- test %>% filter(visitor_home_cbgs != "{}")
+
+# Select only the needed columns
+test <- test %>% select(c(location_name, visitor_home_cbgs))
+
+cleaned_data <- do.call("rbind", apply(test, 1, helper_function))
+```
+
