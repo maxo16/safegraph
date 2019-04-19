@@ -47,8 +47,12 @@ cleaned_data <- do.call("rbind", apply(test, 1, helper_function))
 time <- proc.time()
 
 # Import the dataset
-m_1 <- read_csv("S:/Restricted Data Library/Safegraph/y=2018/m=1/part-00000-tid-6426590199993539346-61efb93e-41b7-44bf-80a7-c549c703927e-3038.c000.csv")
+# PC version 
+# m_1 <- read_csv("S:/Restricted Data Library/Safegraph/y=2018/m=1/part-00000-tid-6426590199993539346-61efb93e-41b7-44bf-80a7-c549c703927e-3038.c000.csv")
 # Filter out the rows with no cbgs
+# Mac version 
+m_1 <- read_csv("/Volumes/sdc-sus$/Restricted Data Library/Safegraph/y=2018/m=1/part-00000-tid-6426590199993539346-61efb93e-41b7-44bf-80a7-c549c703927e-3038.c000.csv")
+
 m_1 <- m_1 %>% filter(visitor_home_cbgs != "{}")
 
 # Select only the needed columns
