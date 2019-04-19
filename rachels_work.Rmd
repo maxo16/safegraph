@@ -1,0 +1,73 @@
+---
+title: "Rachel’s work"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+This chunk loads the required libraries. 
+```{r}
+library(dplyr)
+library(rgdal)
+library(readr)
+library(maptools)
+library(sp)
+library(censusapi)
+library(stringi)
+```
+
+```{r}
+trips  <- read_csv("/Volumes/sdc-sus$/Restricted Data Library/Safegraph/processed_data/m_1_clean.csv")
+places <- read_csv("/Volumes/sdc-sus$/Restricted Data Library/Safegraph/poi/safegraphplaces.csv")
+
+places_lat_long <- places %>% select(c(safegraph_place_id, longitude, latitude))
+
+coordinates(places_lat_long) <- ~longitude+latitude
+
+proj4string(places_lat_long) <- "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"
+
+# Just for SJ county, can me bigger later
+data.shape <- readOGR(dsn='/Volumes/sdc-sus$/Data Library/SanJoaquinCounty_BlockGroups', layer = "SimplyAnalytics_Shapefiles_2018-02-05_00_14_25_ce653013fadbb2ff27530d3de3790f1b")
+
+
+# Can do more piping later to reduce lines of code
+joined_data <- over(places_lat_long, data.shape) %>% cbind( places_lat_long@data) %>% select(safegraph_place_id, bg)
+# Looks like it doesn't preserve the data in places_lat_long but I'll assume it preserves the order so I'll can just bind it back in. 
+# joined_data <- cbind(joined_data, places_lat_long@data) %>% select(safegraph_place_id, bg)
+names(joined_data)[2] <- "dest_bg"
+
+# Want to join income to each separate table first before joining them back in. 
+```
+
+```{r}
+Sys.setenv(CENSUS_KEY="c8aa67e4086b4b5ce3a8717f59faa9a28f611dab")
+census <- getCensus(name = "acs/acs5", vintage = 2017, vars = "B19013_001E",region = "block group:*", regionin = "state:06+county:077")
+census$id <- paste(census$state,census$county,census$tract,census$block_group, sep="")
+census$id <- stri_sub(census$id,-11,-1)
+```
+
+
+```{r}
+joined_data$dest_bg <- as.character(joined_data$dest_bg)
+dest_data <- joined_data %>% left_join(select(census, c("id", "B19013_001E")), by = c("dest_bg" = "id"))
+names(dest_data)[3] <- "dest_inc"
+```
+
+```{r}
+trips$home_cbg <- as.character(trips$home_cbg)
+trips <- trips %>% left_join(select(census, c("id", "B19013_001E")), by = c("home_cbg" = "id"))
+names(trips)[4] <- "home_inc"
+```
+
+```{r}
+final_join <- dest_data %>% left_join(trips, by = c("safegraph_place_id" = "place"))
+
+final_join <- final_join[complete.cases(final_join$home_inc),]
+
+final_join$inc_delta <- final_join$dest_inc - final_join$home_inc
+```
+
